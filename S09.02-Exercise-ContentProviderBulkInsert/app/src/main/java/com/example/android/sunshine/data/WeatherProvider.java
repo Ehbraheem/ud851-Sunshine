@@ -24,6 +24,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 
+import com.example.android.sunshine.utilities.SunshineDateUtils;
+
 /**
  * This class serves as the ContentProvider for all of Sunshine's data. This class allows us to
  * bulkInsert data, query data, and delete data.
@@ -142,7 +144,7 @@ public class WeatherProvider extends ContentProvider {
 //        throw new RuntimeException("Student, you need to implement the bulkInsert method!");
 
 //          TODO (2) Only perform our implementation of bulkInsert if the URI matches the CODE_WEATHER code
-        int numInserted;
+        int numInserted = 0;
 
         SQLiteDatabase database = mOpenHelper.getWritableDatabase();
 
@@ -151,11 +153,32 @@ public class WeatherProvider extends ContentProvider {
         switch (match) {
 
             case CODE_WEATHER:
+                database.beginTransaction();
 
-                for (ContentValues cv: values) {
+                try {
+                    for (ContentValues cv : values) {
 
+                        long date  = cv.getAsShort(WeatherContract.WeatherEntry.COLUMN_DATE);
+
+                        if (!SunshineDateUtils.isDateNormalized(date)) {
+                            throw new IllegalArgumentException("Date must be normalized to insert");
+                        }
+
+                        long _id = database.insert(WeatherContract.WeatherEntry.TABLE_NAME, null, cv);
+
+                        if (_id != -1){
+                            numInserted++;
+                        }
+                    }
+                    database.setTransactionSuccessful();
+                } finally {
+                    database.endTransaction();
                 }
-                numInserted = database.insert(WeatherContract.WeatherEntry.TABLE_NAME,null, );
+
+                return numInserted;
+
+            default:
+                return super.bulkInsert(uri, values);
         }
 
 //              TODO (3) Return the number of rows inserted from our implementation of bulkInsert
